@@ -17,6 +17,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.write("App is loading...")  # Debug line
+
 # ─── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -24,18 +26,27 @@ st.markdown("""
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
+    font-colour:#42a5f5;
+    position:center;
 }
 
 /* Dark gradient background */
 .stApp {
     background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 40%, #16213e 100%);
-    color: #e8eaf6;
+    color:#42a7f5;
 }
 
 /* Sidebar */
 [data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.04);
+    background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 100%);
     border-right: 1px solid rgba(255,255,255,0.08);
+    color: #ffffff;
+}
+
+/* Sidebar components */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span {
+    color: #ffffff !important;
 }
 
 /* Hero banner */
@@ -48,7 +59,53 @@ html, body, [class*="css"] {
     text-align: center;
 }
 .hero-banner h1 { font-size: 2.8rem; font-weight: 800; color: white; margin: 0; letter-spacing: -1px; }
-.hero-banner p  { font-size: 1.05rem; color: rgba(255,255,255,0.85); margin-top: 8px; }
+.hero-banner p  { font-size: 1.05rem; color: rgba(255,255,255,0.92); margin-top: 10px; }
+
+.section-subtitle {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.7);
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.feature-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 20px 22px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+.feature-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+    color: #ffffff;
+}
+.feature-card p {
+    margin: 0;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.5;
+}
+
+.sample-button-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.analysis-panel {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 24px;
+}
 
 /* Result cards */
 .verdict-card {
@@ -115,12 +172,11 @@ html, body, [class*="css"] {
 
 /* Info box */
 .info-box {
-    background: rgba(102,126,234,0.12);
-    border: 1px solid rgba(102,126,234,0.3);
+    background: linear-gradient(135deg, rgba(30,30,60,0.8), rgba(50,30,70,0.8));
+    border: 1px solid rgba(102,126,234,0.5);
     border-radius: 12px;
-    padding: 16px 20px;
-    margin: 12px 0;
-    color: #c7d2fe;
+    padding: 16px 20px;    margin: 12px 0;
+    color: #ffffff;
     font-size: 0.9rem;
     line-height: 1.6;
 }
@@ -189,8 +245,7 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS sources (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_name TEXT UNIQUE, trust_score REAL DEFAULT 50.0, verified INTEGER DEFAULT 0)''')
-    for src, score, v in [('BBC',95,1),('Reuters',98,1),('The Hindu',90,1),
-                           ('AP News',96,1),('NDTV',80,1),('Daily Mail',38,0),
+    for src, score, v in [('BBC',95,1),('Reuters',98,1),('The Hindu',90,1),                           ('AP News',96,1),('CNN',85,1),('NDTV',80,1),('Daily Mail',38,0),
                            ('WhatsApp Forward',10,0),('Unknown',30,0)]:
         c.execute("INSERT OR IGNORE INTO sources(source_name,trust_score,verified) VALUES(?,?,?)",(src,score,v))
     conn.commit(); conn.close()
@@ -352,6 +407,21 @@ st.markdown("""
 <div class="hero-banner">
   <h1>🛡️ FakeShield</h1>
   <p>Intelligent Fake News Detection · Explainable AI · English & Tamil</p>
+  <p class="section-subtitle">Analyze headlines and articles with a blended credibility score, clickbait detection, and source trust insights.</p>
+</div>
+<div class="card-grid">
+  <div class="feature-card">
+    <h3>Fast Insight</h3>
+    <p>Paste text, choose a source, and get an instant credibility verdict with clear indicators.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Explainable Flags</h3>
+    <p>See why a story looks suspicious with clickbait, emotional wording, and source trust signals.</p>
+  </div>
+  <div class="feature-card">
+    <h3>Feedback Driven</h3>
+    <p>Help the system learn by rating predictions and viewing history in the feedback dashboard.</p>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -360,7 +430,7 @@ with st.sidebar:
     st.markdown("### ⚙️ Settings")
     source_name = st.selectbox(
         "📰 News Source",
-        ["Unknown","BBC","Reuters","AP News","The Hindu","NDTV","Daily Mail","WhatsApp Forward"],
+        ["Unknown","BBC","Reuters","AP News","The Hindu","CNN","NDTV","Daily Mail","WhatsApp Forward"],
         index=0,
     )
     language_hint = st.radio("🌐 Language", ["Auto-detect","English","Tamil"], index=0)
@@ -388,40 +458,45 @@ tab_detect, tab_history, tab_about = st.tabs(["🔍 Detect", "📜 History", "�
 
 # ── Tab 1: Detect ──────────────────────────────────────────────────────────────
 with tab_detect:
-    col_in, col_out = st.columns([1, 1], gap="large")
+    col_in, col_out = st.columns([1, 1.1], gap="large")
 
     with col_in:
         st.markdown('<p class="section-header">📝 Enter News Article</p>', unsafe_allow_html=True)
+        st.markdown('<p class="section-subtitle">Paste a headline or article excerpt to check credibility, source trust, and manipulation signals.</p>', unsafe_allow_html=True)
         news_text = st.text_area(
             label="",
             placeholder="Paste a news headline or full article here...",
-            height=200,
+            height=220,
             key="news_input",
         )
 
         # Sample buttons
         st.markdown("**Try a sample:**")
-        sc1, sc2, sc3 = st.columns(3)
-        sample_en_real = "Scientists at NASA have confirmed the discovery of water ice deposits near the lunar south pole, boosting hopes for future Moon missions."
-        sample_en_fake = "BREAKING: Drinking lemon water CURES cancer completely overnight! Doctors are SHOCKED by this secret cure they've been hiding from you!!!"
-        sample_ta = "அரசு புதிய திட்டத்தை அறிவிக்கிறது. விவசாயிகளுக்கு நேரடி நிதி உதவி வழங்கப்படும்."
-        if sc1.button("✅ Real (EN)", use_container_width=True):
-            st.session_state["prefill"] = sample_en_real
-            news_text = sample_en_real
-        if sc2.button("❌ Fake (EN)", use_container_width=True):
-            st.session_state["prefill"] = sample_en_fake
-            news_text = sample_en_fake
-        if sc3.button("🇮🇳 Tamil", use_container_width=True):
-            st.session_state["prefill"] = sample_ta
-            news_text = sample_ta
+        with st.container():
+            sc1, sc2, sc3 = st.columns(3, gap="small")
+            sample_en_real = "Scientists at NASA have confirmed the discovery of water ice deposits near the lunar south pole, boosting hopes for future Moon missions."
+            sample_en_fake = "BREAKING: Drinking lemon water CURES cancer completely overnight! Doctors are SHOCKED by this secret cure they've been hiding from you!!!"
+            sample_ta = "அரசு புதிய திட்டத்தை அறிவிக்கிறது. விவசாயிகளுக்கு நேரடி நிதி உதவி வழங்கப்படும்."
+            if sc1.button("✅ Real (EN)", use_container_width=True):
+                st.session_state["prefill"] = sample_en_real
+                news_text = sample_en_real
+            if sc2.button("❌ Fake (EN)", use_container_width=True):
+                st.session_state["prefill"] = sample_en_fake
+                news_text = sample_en_fake
+            if sc3.button("🇮🇳 Tamil", use_container_width=True):
+                st.session_state["prefill"] = sample_ta
+                news_text = sample_ta
 
         if "prefill" in st.session_state and not news_text:
             news_text = st.session_state["prefill"]
 
         analyze_btn = st.button("🚀 Analyze Article", use_container_width=True)
 
+        st.markdown('<div class="info-box">Tip: For best results, include the full headline and the first paragraph of the article.</div>', unsafe_allow_html=True)
+
     with col_out:
         if analyze_btn and news_text.strip():
+            st.markdown('<div class="analysis-panel">', unsafe_allow_html=True)
             result = classify_news(news_text, model, source_name)
             if result:
                 # Verdict card
@@ -538,7 +613,7 @@ with tab_detect:
                 # Feedback
                 st.markdown("---")
                 st.markdown('<p class="section-header">🗣️ Was this prediction correct?</p>', unsafe_allow_html=True)
-                fb_col1, fb_col2, fb_col3 = st.columns(3)
+                fb_col1, fb_col2, fb_col3 = st.columns(3, gap="medium")
                 if fb_col1.button("✅ Yes, Correct"):
                     save_feedback(news_text[:500], result['verdict'], result['verdict'])
                     st.success("Thanks for your feedback!")
@@ -548,12 +623,13 @@ with tab_detect:
                 if fb_col3.button("⚠️ No, It's Fake"):
                     save_feedback(news_text[:500], result['verdict'], "FAKE")
                     st.info("Noted! Feedback saved.")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         elif analyze_btn:
             st.warning("Please enter some news text to analyze.")
         else:
-            st.markdown("""<div class="info-box" style="margin-top:80px;text-align:center;">
-            👈 Enter a news article and click <strong>Analyze Article</strong>
+            st.markdown("""<div class="info-box" style="margin-top:40px;text-align:center;">
+            👈 Enter a news article and click <strong>Analyze Article</strong> to get a credibility score.
             </div>""", unsafe_allow_html=True)
 
 # ── Tab 2: History ─────────────────────────────────────────────────────────────
