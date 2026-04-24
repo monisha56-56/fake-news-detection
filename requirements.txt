@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+scikit-learn
+nltk
+lime
+requests
+plotly
+networkx
+indic-nlp-library
+spacy
+transformers
+torch
