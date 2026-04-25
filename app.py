@@ -1,3 +1,4 @@
+import importlib.util
 import streamlit as st
 import os
 import re
@@ -7,6 +8,17 @@ import joblib
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+
+torch_spec = importlib.util.find_spec("torch")
+transformers_spec = importlib.util.find_spec("transformers")
+if torch_spec and transformers_spec:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
+else:
+    torch = None
+    AutoTokenizer = None
+    AutoModelForSequenceClassification = None
+
 from datetime import datetime
 
 # ─── Page Config ────────────────────────────────────────────────────────────────
@@ -23,6 +35,10 @@ st.write("App is loading...")  # Debug line
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+}
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
@@ -45,8 +61,23 @@ html, body, [class*="css"] {
 
 /* Sidebar components */
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] span {
-    color: #ffffff !important;
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] [role="radiogroup"] label,
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] .stSelectbox label {
+    color: #f8f8ff !important;
+}
+
+/* Radio button text - Language options */
+[data-testid="stSidebar"] [role="radiogroup"] p,
+[data-testid="stSidebar"] .stRadio > div > div > p {
+    color: #d4d4d8 !important;
+    font-weight: 500 !important;
+}
+
+/* Radio button label text color */
+[role="radiogroup"] label {
+    color: #d4d4d8 !important;
 }
 
 /* Hero banner */
@@ -153,11 +184,14 @@ html, body, [class*="css"] {
 
 /* Text area */
 .stTextArea textarea {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
+    background: rgba(255,255,255,0.94) !important;
+    border: 1px solid rgba(0,0,0,0.15) !important;
     border-radius: 12px !important;
-    color: #e8eaf6 !important;
+    color: #000000 !important;
     font-size: 0.95rem !important;
+}
+.stTextArea textarea::placeholder {
+    color: #6b7280 !important;
 }
 
 /* Section headers */
@@ -211,29 +245,213 @@ html, body, [class*="css"] {
     background: rgba(255,255,255,0.04);
     border-radius: 12px;
     padding: 4px;
-    gap: 4px;
+    gap: 16px;
+    display: flex;
+    justify-content: space-between;
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px !important;
     color: #a0a8c0 !important;
     font-weight: 500 !important;
+    flex: 1;
+    text-align: center;
+    min-width: 0;
 }
 .stTabs [aria-selected="true"] {
     background: linear-gradient(135deg, #667eea, #764ba2) !important;
     color: white !important;
 }
+
+/* ═══ RESPONSIVE DESIGN FOR ALL DEVICES ═══ */
+
+/* Mobile (phones up to 480px) */
+@media (max-width: 480px) {
+    .hero-banner {
+        padding: 20px 16px;
+        margin-bottom: 16px;
+    }
+    .hero-banner h1 {
+        font-size: 1.8rem;
+        letter-spacing: -0.5px;
+    }
+    .hero-banner p {
+        font-size: 0.85rem;
+    }
+    .section-subtitle {
+        font-size: 0.8rem;
+    }
+    .card-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .feature-card {
+        padding: 16px 18px;
+    }
+    .feature-card h3 {
+        font-size: 0.95rem;
+        margin-bottom: 6px;
+    }
+    .feature-card p {
+        font-size: 0.8rem;
+        line-height: 1.4;
+    }
+    [data-testid="stSidebar"] {
+        width: 100% !important;
+    }
+    .sample-button-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .stButton > button {
+        padding: 10px 16px !important;
+        font-size: 0.85rem !important;
+    }
+    .metric-tile {
+        padding: 12px;
+    }
+    .metric-tile .label {
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+    }
+    .metric-tile .value {
+        font-size: 1.3rem;
+        margin-top: 2px;
+    }
+    .section-header {
+        font-size: 0.95rem;
+        margin: 16px 0 8px 0;
+    }
+    .info-box {
+        padding: 12px 16px;
+        font-size: 0.8rem;
+        margin: 8px 0;
+    }
+    .verdict-card {
+        padding: 16px 20px;
+        margin: 12px 0;
+    }
+    .verdict-card h2 {
+        font-size: 1.4rem;
+    }
+    .verdict-card p {
+        font-size: 0.8rem;
+        margin-top: 4px;
+    }
+}
+
+/* Tablet (481px - 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+    .hero-banner {
+        padding: 28px 28px;
+        margin-bottom: 24px;
+    }
+    .hero-banner h1 {
+        font-size: 2.2rem;
+    }
+    .hero-banner p {
+        font-size: 0.95rem;
+    }
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+    }
+    .feature-card {
+        padding: 18px 20px;
+    }
+    .section-header {
+        font-size: 1rem;
+    }
+    .stButton > button {
+        padding: 12px 24px !important;
+        font-size: 0.9rem !important;
+    }
+    .verdict-card {
+        padding: 20px 24px;
+    }
+    .verdict-card h2 {
+        font-size: 1.7rem;
+    }
+}
+
+/* Desktop (769px and above) */
+@media (min-width: 769px) {
+    .hero-banner {
+        padding: 40px 36px;
+    }
+    .hero-banner h1 {
+        font-size: 2.8rem;
+    }
+    .card-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .section-header {
+        font-size: 1.2rem;
+    }
+}
+
+/* Large screens (1200px and above) */
+@media (min-width: 1200px) {
+    .card-grid {
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+    }
+    .hero-banner h1 {
+        font-size: 3rem;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 # ─── Helpers ────────────────────────────────────────────────────────────────────
 DB_PATH = "fake_news_system.db"
 MODEL_PATH = "models/fake_news_model.pkl"
+BERT_MODEL_DIR = "models/bert_fake_news"
+BERT_ENABLED = torch is not None and AutoTokenizer is not None and AutoModelForSequenceClassification is not None
+
+class BertInferenceWrapper:
+    def __init__(self, model, tokenizer, classes):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.classes_ = np.array(classes)
+        self.model.eval()
+
+    @classmethod
+    def load(cls, model_dir):
+        tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        model = AutoModelForSequenceClassification.from_pretrained(model_dir)
+        labels = [model.config.id2label[i] for i in sorted(model.config.id2label)]
+        return cls(model, tokenizer, labels)
+
+    def predict_proba(self, texts):
+        if isinstance(texts, str):
+            texts = [texts]
+        enc = self.tokenizer(
+            texts,
+            truncation=True,
+            padding=True,
+            max_length=256,
+            return_tensors="pt",
+        )
+        device = next(self.model.parameters()).device
+        enc = {k: v.to(device) for k, v in enc.items()}
+        with torch.no_grad():
+            outputs = self.model(**enc)
+        probs = torch.softmax(outputs.logits, dim=-1).cpu().numpy()
+        return probs
 
 @st.cache_resource
 def load_model():
+    if BERT_ENABLED and os.path.isdir(BERT_MODEL_DIR):
+        try:
+            return BertInferenceWrapper.load(BERT_MODEL_DIR)
+        except Exception:
+            pass
     if os.path.exists(MODEL_PATH):
         return joblib.load(MODEL_PATH)
     return None
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -316,7 +534,8 @@ def classify_news(text, model, source_name="Unknown"):
     ml_label, ml_prob = "Unknown", [0.33, 0.33, 0.34]
     if model:
         try:
-            prob = model.predict_proba([cleaned])[0]
+            input_for_model = text if isinstance(model, BertInferenceWrapper) else cleaned
+            prob = model.predict_proba([input_for_model])[0]
             classes = model.classes_
             idx = np.argmax(prob)
             ml_label = classes[idx]
@@ -437,7 +656,10 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📊 Model Status")
     if model:
-        st.success("✅ ML Model loaded")
+        if isinstance(model, BertInferenceWrapper):
+            st.success("✅ BERT model loaded")
+        else:
+            st.success("✅ ML Model loaded")
     else:
         st.warning("⚠️ No trained model found\nRun `python model_trainer.py` first")
     st.markdown("---")
@@ -445,7 +667,7 @@ with st.sidebar:
     st.markdown("""
     <div class="info-box">
     FakeShield combines:<br>
-    🤖 ML Classification (TF-IDF + RF)<br>
+    🤖 ML Classification (BERT Transformer)<br>
     🧠 Clickbait Detection<br>
     💢 Emotional Analysis<br>
     📡 Real-time Fact Check<br>
@@ -465,7 +687,7 @@ with tab_detect:
         st.markdown('<p class="section-subtitle">Paste a headline or article excerpt to check credibility, source trust, and manipulation signals.</p>', unsafe_allow_html=True)
         news_text = st.text_area(
             label="",
-            placeholder="Paste a news headline or full article here...",
+            placeholder="Paste a headline or full article here...",
             height=220,
             key="news_input",
         )
