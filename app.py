@@ -26,10 +26,8 @@ st.set_page_config(
     page_title="FakeShield — Fake News Detector",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
-
-st.write("App is loading...")  # Debug line
 
 # ─── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -52,12 +50,75 @@ html, body, [class*="css"] {
     color:#42a7f5;
 }
 
+/* Remove Deploy Button Only */
+.stDeployButton {
+    display: none !important;
+
+
+}
+
+/* Show the 3-dots Settings menu darkly */
+[data-testid="stToolbar"],
+[data-testid="stHeaderActionElements"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 0.6 !important;
+    filter: brightness(0.5); /* Make it look darker */
+}
+
+/* Make Top Header Transparent and remove its space */
+[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 0px !important;
+}
+
+/* Move Main App Content to the Top */
+.block-container {
+    padding-top: 2rem !important;
+    margin-top: -30px !important;
+}
+
 /* Sidebar */
 [data-testid="stSidebar"] {
     background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 100%);
     border-right: 1px solid rgba(255,255,255,0.08);
     color: #ffffff;
 }
+
+/* ─── SIDEBAR TOGGLE OVERRIDES (show 3 dots) ─── */
+/* Force the button itself and its contents to be transparent */
+button[data-testid="collapsedControl"],
+button[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebar"] button[kind="header"],
+[data-testid="stSidebar"] button[kind="headerNoPadding"] {
+    color: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Hide SVGs if present */
+button[data-testid="collapsedControl"] svg,
+button[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebar"] button[kind="header"] svg,
+[data-testid="stSidebar"] button[kind="headerNoPadding"] svg {
+    display: none !important;
+}
+
+/* Inject the 3 dots precisely over the transparent button */
+button[data-testid="collapsedControl"]::after,
+button[data-testid="stSidebarCollapseButton"]::after,
+[data-testid="stSidebar"] button[kind="header"]::after,
+[data-testid="stSidebar"] button[kind="headerNoPadding"]::after {
+    content: "⋮" !important;
+    font-size: 34px !important;
+    font-weight: 900 !important;
+    color: #a78bfa !important; /* This brings the color back just for the 3 dots */
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    line-height: 1 !important;
+}
+/* ──────────────────────────────────────────────────────────── */
 
 /* Sidebar components */
 [data-testid="stSidebar"] label,
@@ -646,7 +707,7 @@ st.markdown("""
 
 # Sidebar
 with st.sidebar:
-    st.markdown("### ⚙️ Settings")
+    st.markdown("### ⋮ Settings")
     source_name = st.selectbox(
         "📰 News Source",
         ["Unknown","BBC","Reuters","AP News","The Hindu","CNN","NDTV","Daily Mail","WhatsApp Forward"],
@@ -680,171 +741,167 @@ tab_detect, tab_history, tab_about = st.tabs(["🔍 Detect", "📜 History", "�
 
 # ── Tab 1: Detect ──────────────────────────────────────────────────────────────
 with tab_detect:
-    col_in, col_out = st.columns([1, 1.1], gap="large")
+    st.markdown('<p class="section-header">📝 Enter News Article</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-subtitle">Paste a headline or article excerpt to check credibility, source trust, and manipulation signals.</p>', unsafe_allow_html=True)
+    news_text = st.text_area(
+        label="",
+        placeholder="Paste a headline or full article here...",
+        height=220,
+        key="news_input",
+    )
 
-    with col_in:
-        st.markdown('<p class="section-header">📝 Enter News Article</p>', unsafe_allow_html=True)
-        st.markdown('<p class="section-subtitle">Paste a headline or article excerpt to check credibility, source trust, and manipulation signals.</p>', unsafe_allow_html=True)
-        news_text = st.text_area(
-            label="",
-            placeholder="Paste a headline or full article here...",
-            height=220,
-            key="news_input",
-        )
+    # Sample buttons
+    st.markdown("**Try a sample:**")
+    with st.container():
+        sc1, sc2, sc3 = st.columns(3, gap="small")
+        sample_en_real = "Scientists at NASA have confirmed the discovery of water ice deposits near the lunar south pole, boosting hopes for future Moon missions."
+        sample_en_fake = "BREAKING: Drinking lemon water CURES cancer completely overnight! Doctors are SHOCKED by this secret cure they've been hiding from you!!!"
+        sample_ta = "அரசு புதிய திட்டத்தை அறிவிக்கிறது. விவசாயிகளுக்கு நேரடி நிதி உதவி வழங்கப்படும்."
+        if sc1.button("✅ Real (EN)", use_container_width=True):
+            st.session_state["prefill"] = sample_en_real
+            news_text = sample_en_real
+        if sc2.button("❌ Fake (EN)", use_container_width=True):
+            st.session_state["prefill"] = sample_en_fake
+            news_text = sample_en_fake
+        if sc3.button("🇮🇳 Tamil", use_container_width=True):
+            st.session_state["prefill"] = sample_ta
+            news_text = sample_ta
 
-        # Sample buttons
-        st.markdown("**Try a sample:**")
-        with st.container():
-            sc1, sc2, sc3 = st.columns(3, gap="small")
-            sample_en_real = "Scientists at NASA have confirmed the discovery of water ice deposits near the lunar south pole, boosting hopes for future Moon missions."
-            sample_en_fake = "BREAKING: Drinking lemon water CURES cancer completely overnight! Doctors are SHOCKED by this secret cure they've been hiding from you!!!"
-            sample_ta = "அரசு புதிய திட்டத்தை அறிவிக்கிறது. விவசாயிகளுக்கு நேரடி நிதி உதவி வழங்கப்படும்."
-            if sc1.button("✅ Real (EN)", use_container_width=True):
-                st.session_state["prefill"] = sample_en_real
-                news_text = sample_en_real
-            if sc2.button("❌ Fake (EN)", use_container_width=True):
-                st.session_state["prefill"] = sample_en_fake
-                news_text = sample_en_fake
-            if sc3.button("🇮🇳 Tamil", use_container_width=True):
-                st.session_state["prefill"] = sample_ta
-                news_text = sample_ta
+    if "prefill" in st.session_state and not news_text:
+        news_text = st.session_state["prefill"]
 
-        if "prefill" in st.session_state and not news_text:
-            news_text = st.session_state["prefill"]
+    analyze_btn = st.button("🚀 Analyze Article", use_container_width=True)
 
-        analyze_btn = st.button("🚀 Analyze Article", use_container_width=True)
+    st.markdown('<div class="info-box" style="text-align: center;">Tip: For best results, include the full headline and the first paragraph of the article.</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="info-box">Tip: For best results, include the full headline and the first paragraph of the article.</div>', unsafe_allow_html=True)
+    if analyze_btn and news_text.strip():
+        st.markdown('<div class="analysis-panel">', unsafe_allow_html=True)
+        result = classify_news(news_text, model, source_name)
+        if result:
+            # Verdict card
+            st.markdown(f"""
+            <div class="verdict-card {result['verdict_class']}">
+              <h2>{result['verdict_emoji']} {result['verdict']}</h2>
+              <p>Language: {result['language']} · Words: {result['word_count']}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-    with col_out:
-        if analyze_btn and news_text.strip():
-            st.markdown('<div class="analysis-panel">', unsafe_allow_html=True)
-            result = classify_news(news_text, model, source_name)
-            if result:
-                # Verdict card
-                st.markdown(f"""
-                <div class="verdict-card {result['verdict_class']}">
-                  <h2>{result['verdict_emoji']} {result['verdict']}</h2>
-                  <p>Language: {result['language']} · Words: {result['word_count']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+            # Metrics
+            m1, m2, m3 = st.columns(3)
+            m1.markdown(f"""<div class="metric-tile">
+              <div class="label">Credibility</div>
+              <div class="value">{result['credibility']}%</div>
+            </div>""", unsafe_allow_html=True)
+            m2.markdown(f"""<div class="metric-tile">
+              <div class="label">Emotional Score</div>
+              <div class="value">{result['emotional_score']}</div>
+            </div>""", unsafe_allow_html=True)
+            m3.markdown(f"""<div class="metric-tile">
+              <div class="label">Source Trust</div>
+              <div class="value">{result['source_score']:.0f}%</div>
+            </div>""", unsafe_allow_html=True)
 
-                # Metrics
-                m1, m2, m3 = st.columns(3)
-                m1.markdown(f"""<div class="metric-tile">
-                  <div class="label">Credibility</div>
-                  <div class="value">{result['credibility']}%</div>
-                </div>""", unsafe_allow_html=True)
-                m2.markdown(f"""<div class="metric-tile">
-                  <div class="label">Emotional Score</div>
-                  <div class="value">{result['emotional_score']}</div>
-                </div>""", unsafe_allow_html=True)
-                m3.markdown(f"""<div class="metric-tile">
-                  <div class="label">Source Trust</div>
-                  <div class="value">{result['source_score']:.0f}%</div>
-                </div>""", unsafe_allow_html=True)
+            st.markdown("---")
 
-                st.markdown("---")
+            # Gauge chart
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=result['credibility'],
+                title={'text': "Credibility Score", 'font': {'color': '#e8eaf6', 'size': 14}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickcolor': '#a0a8c0'},
+                    'bar': {'color': '#667eea'},
+                    'steps': [
+                        {'range': [0, 35], 'color': 'rgba(231,76,60,0.3)'},
+                        {'range': [35, 65], 'color': 'rgba(241,196,15,0.3)'},
+                        {'range': [65, 100], 'color': 'rgba(56,239,125,0.3)'},
+                    ],
+                    'threshold': {'line': {'color': '#f093fb', 'width': 3}, 'value': result['credibility']},
+                },
+                number={'suffix': '%', 'font': {'color': '#e8eaf6', 'size': 28}},
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#e8eaf6',
+                height=250,
+                margin=dict(t=40, b=10, l=20, r=20),
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
 
-                # Gauge chart
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=result['credibility'],
-                    title={'text': "Credibility Score", 'font': {'color': '#e8eaf6', 'size': 14}},
-                    gauge={
-                        'axis': {'range': [0, 100], 'tickcolor': '#a0a8c0'},
-                        'bar': {'color': '#667eea'},
-                        'steps': [
-                            {'range': [0, 35], 'color': 'rgba(231,76,60,0.3)'},
-                            {'range': [35, 65], 'color': 'rgba(241,196,15,0.3)'},
-                            {'range': [65, 100], 'color': 'rgba(56,239,125,0.3)'},
-                        ],
-                        'threshold': {'line': {'color': '#f093fb', 'width': 3}, 'value': result['credibility']},
-                    },
-                    number={'suffix': '%', 'font': {'color': '#e8eaf6', 'size': 28}},
+            # Clickbait flags
+            if result['clickbait_flags']:
+                st.markdown('<p class="section-header">🚩 Clickbait Indicators</p>', unsafe_allow_html=True)
+                flags_html = "".join(f'<span class="flag-item">⚠ {f}</span>' for f in result['clickbait_flags'])
+                st.markdown(flags_html, unsafe_allow_html=True)
+
+            # Emotional words
+            if result['emotional_words']:
+                st.markdown('<p class="section-header">💢 Emotional Manipulation</p>', unsafe_allow_html=True)
+                words_html = "".join(f'<span class="flag-item">{w}</span>' for w in result['emotional_words'])
+                st.markdown(words_html, unsafe_allow_html=True)
+                if result['caps_count']:
+                    st.caption(f"🔠 {result['caps_count']} ALL-CAPS words · ❗ {result['excl_count']} exclamation marks")
+
+            # Key features
+            if result['top_words']:
+                st.markdown('<p class="section-header">🔑 Key Terms</p>', unsafe_allow_html=True)
+                chips = "".join(f'<span class="feature-chip">{w}</span>' for w in result['top_words'])
+                st.markdown(chips, unsafe_allow_html=True)
+
+            # ML probability bar chart
+            if model and result['ml_label'] != "Unknown":
+                st.markdown('<p class="section-header">📊 ML Model Confidence</p>', unsafe_allow_html=True)
+                classes = list(result['ml_classes'])
+                probs = [round(p * 100, 1) for p in result['ml_prob']]
+                colors = []
+                for c in classes:
+                    if c == "Real": colors.append('#38ef7d')
+                    elif c == "Fake": colors.append('#e74c3c')
+                    else: colors.append('#f1c40f')
+                fig_bar = go.Figure(go.Bar(
+                    x=classes, y=probs,
+                    marker_color=colors,
+                    text=[f"{p}%" for p in probs],
+                    textposition='auto',
                 ))
-                fig_gauge.update_layout(
+                fig_bar.update_layout(
                     paper_bgcolor='rgba(0,0,0,0)',
                     plot_bgcolor='rgba(0,0,0,0)',
                     font_color='#e8eaf6',
-                    height=250,
-                    margin=dict(t=40, b=10, l=20, r=20),
+                    height=220,
+                    margin=dict(t=10, b=10, l=20, r=20),
+                    yaxis=dict(range=[0, 100], gridcolor='rgba(255,255,255,0.08)'),
+                    xaxis=dict(gridcolor='rgba(255,255,255,0.08)'),
+                    showlegend=False,
                 )
-                st.plotly_chart(fig_gauge, use_container_width=True)
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-                # Clickbait flags
-                if result['clickbait_flags']:
-                    st.markdown('<p class="section-header">🚩 Clickbait Indicators</p>', unsafe_allow_html=True)
-                    flags_html = "".join(f'<span class="flag-item">⚠ {f}</span>' for f in result['clickbait_flags'])
-                    st.markdown(flags_html, unsafe_allow_html=True)
+            # Real-time fact check
+            st.markdown('<p class="section-header">📡 Related News (Fact Check)</p>', unsafe_allow_html=True)
+            keywords = " ".join(result['top_words'][:3])
+            related = fetch_related_news(keywords)
+            if related:
+                for art in related:
+                    st.markdown(f"- **{art['source']}**: [{art['title']}]({art['url']})")
+            else:
+                st.markdown("""<div class="info-box">
+                💡 Set the <code>NEWS_API_KEY</code> environment variable to enable real-time fact checking via NewsAPI.org
+                </div>""", unsafe_allow_html=True)
 
-                # Emotional words
-                if result['emotional_words']:
-                    st.markdown('<p class="section-header">💢 Emotional Manipulation</p>', unsafe_allow_html=True)
-                    words_html = "".join(f'<span class="flag-item">{w}</span>' for w in result['emotional_words'])
-                    st.markdown(words_html, unsafe_allow_html=True)
-                    if result['caps_count']:
-                        st.caption(f"🔠 {result['caps_count']} ALL-CAPS words · ❗ {result['excl_count']} exclamation marks")
-
-                # Key features
-                if result['top_words']:
-                    st.markdown('<p class="section-header">🔑 Key Terms</p>', unsafe_allow_html=True)
-                    chips = "".join(f'<span class="feature-chip">{w}</span>' for w in result['top_words'])
-                    st.markdown(chips, unsafe_allow_html=True)
-
-                # ML probability bar chart
-                if model and result['ml_label'] != "Unknown":
-                    st.markdown('<p class="section-header">📊 ML Model Confidence</p>', unsafe_allow_html=True)
-                    classes = list(result['ml_classes'])
-                    probs = [round(p * 100, 1) for p in result['ml_prob']]
-                    colors = []
-                    for c in classes:
-                        if c == "Real": colors.append('#38ef7d')
-                        elif c == "Fake": colors.append('#e74c3c')
-                        else: colors.append('#f1c40f')
-                    fig_bar = go.Figure(go.Bar(
-                        x=classes, y=probs,
-                        marker_color=colors,
-                        text=[f"{p}%" for p in probs],
-                        textposition='auto',
-                    ))
-                    fig_bar.update_layout(
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        font_color='#e8eaf6',
-                        height=220,
-                        margin=dict(t=10, b=10, l=20, r=20),
-                        yaxis=dict(range=[0, 100], gridcolor='rgba(255,255,255,0.08)'),
-                        xaxis=dict(gridcolor='rgba(255,255,255,0.08)'),
-                        showlegend=False,
-                    )
-                    st.plotly_chart(fig_bar, use_container_width=True)
-
-                # Real-time fact check
-                st.markdown('<p class="section-header">📡 Related News (Fact Check)</p>', unsafe_allow_html=True)
-                keywords = " ".join(result['top_words'][:3])
-                related = fetch_related_news(keywords)
-                if related:
-                    for art in related:
-                        st.markdown(f"- **{art['source']}**: [{art['title']}]({art['url']})")
-                else:
-                    st.markdown("""<div class="info-box">
-                    💡 Set the <code>NEWS_API_KEY</code> environment variable to enable real-time fact checking via NewsAPI.org
-                    </div>""", unsafe_allow_html=True)
-
-                # Feedback
-                st.markdown("---")
-                st.markdown('<p class="section-header">🗣️ Was this prediction correct?</p>', unsafe_allow_html=True)
-                fb_col1, fb_col2, fb_col3 = st.columns(3, gap="medium")
-                if fb_col1.button("✅ Yes, Correct"):
-                    save_feedback(news_text[:500], result['verdict'], result['verdict'])
-                    st.success("Thanks for your feedback!")
-                if fb_col2.button("❌ No, It's Real"):
-                    save_feedback(news_text[:500], result['verdict'], "REAL")
-                    st.info("Noted! Feedback saved.")
-                if fb_col3.button("⚠️ No, It's Fake"):
-                    save_feedback(news_text[:500], result['verdict'], "FAKE")
-                    st.info("Noted! Feedback saved.")
+            # Feedback
+            st.markdown("---")
+            st.markdown('<p class="section-header">🗣️ Was this prediction correct?</p>', unsafe_allow_html=True)
+            fb_col1, fb_col2, fb_col3 = st.columns(3, gap="medium")
+            if fb_col1.button("✅ Yes, Correct"):
+                save_feedback(news_text[:500], result['verdict'], result['verdict'])
+                st.success("Thanks for your feedback!")
+            if fb_col2.button("❌ No, It's Real"):
+                save_feedback(news_text[:500], result['verdict'], "REAL")
+                st.info("Noted! Feedback saved.")
+            if fb_col3.button("⚠️ No, It's Fake"):
+                save_feedback(news_text[:500], result['verdict'], "FAKE")
+                st.info("Noted! Feedback saved.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         elif analyze_btn:
